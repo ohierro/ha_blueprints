@@ -1,0 +1,99 @@
+blueprint:
+  name: Control Luces MQTT (1-3 botones) - Versión Final
+  description: >
+    Control para interruptores que envían 1_single, 2_single y 3_single vía MQTT.
+  domain: automation
+  input:
+    button_count:
+      name: Número de botones
+      description: "Asegúrate de seleccionar '2' o '3' para que esos botones funcionen."
+      default: "1"
+      selector:
+        select:
+          options:
+            - label: "1 botón"
+              value: "1"
+            - label: "2 botones"
+              value: "2"
+            - label: "3 botones"
+              value: "3"
+    switch_device:
+      name: Interruptor
+      selector:
+        device:
+          integration: mqtt
+    lights_button_1:
+      name: Luces botón 1
+      selector:
+        target:
+          entity:
+            domain: light
+    lights_button_2:
+      name: Luces botón 2
+      default: {}
+      selector:
+        target:
+          entity:
+            domain: light
+    lights_button_3:
+      name: Luces botón 3
+      default: {}
+      selector:
+        target:
+          entity:
+            domain: light
+
+mode: restart
+
+variables:
+  button_limit: !input button_count
+
+trigger:
+  - platform: device
+    domain: mqtt
+    device_id: !input switch_device
+    type: action
+    subtype: 1_single
+    id: "btn1"
+  - platform: device
+    domain: mqtt
+    device_id: !input switch_device
+    type: action
+    subtype: 2_single
+    id: "btn2"
+  - platform: device
+    domain: mqtt
+    device_id: !input switch_device
+    type: action
+    subtype: 3_single
+    id: "btn3"
+
+action:
+  - choose:
+      # Botón 1
+      - conditions:
+          - condition: trigger
+            id: "btn1"
+        sequence:
+          - action: light.toggle
+            target: !input lights_button_1
+
+      # Botón 2 (Se activa si el trigger es btn2 Y el selector es >= 2)
+      - conditions:
+          - condition: trigger
+            id: "btn2"
+          - condition: template
+            value_template: "{{ button_limit | int >= 2 }}"
+        sequence:
+          - action: light.toggle
+            target: !input lights_button_2
+
+      # Botón 3 (Se activa si el trigger es btn3 Y el selector es 3)
+      - conditions:
+          - condition: trigger
+            id: "btn3"
+          - condition: template
+            value_template: "{{ button_limit | int >= 3 }}"
+        sequence:
+          - action: light.toggle
+            target: !input lights_button_3

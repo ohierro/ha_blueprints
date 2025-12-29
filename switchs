@@ -1,0 +1,102 @@
+blueprint:
+  name: Control de luces con interruptor (1–3 botones)
+  description: >
+    Controla una o varias luces usando un interruptor físico
+    de 1, 2 o 3 botones. Solo tienes que indicar el dispositivo
+    y las luces que controla.
+  domain: automation
+  input:
+    button_count:
+      name: Número de botones
+      description: ¿Cuántos botones tiene el interruptor?
+      default: 1
+      selector:
+        select:
+          options:
+            - label: "1 botón"
+              value: 1
+            - label: "2 botones"
+              value: 2
+            - label: "3 botones"
+              value: 3
+
+    switch_device:
+      name: Interruptor
+      description: Dispositivo físico del interruptor
+      selector:
+        device:
+
+    lights_button_1:
+      name: Luces botón 1
+      selector:
+        target:
+          entity:
+            domain: light
+
+    lights_button_2:
+      name: Luces botón 2
+      default: {}
+      selector:
+        target:
+          entity:
+            domain: light
+
+    lights_button_3:
+      name: Luces botón 3
+      default: {}
+      selector:
+        target:
+          entity:
+            domain: light
+
+mode: restart
+
+trigger:
+  - platform: device
+    device_id: !input switch_device
+    domain: device
+    type: button_1_single
+    id: button_1
+
+  - platform: device
+    device_id: !input switch_device
+    domain: device
+    type: button_2_single
+    id: button_2
+
+  - platform: device
+    device_id: !input switch_device
+    domain: device
+    type: button_3_single
+    id: button_3
+
+action:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: button_1
+        sequence:
+          - service: light.toggle
+            target: !input lights_button_1
+
+      - conditions:
+          - condition: and
+            conditions:
+              - condition: trigger
+                id: button_2
+              - condition: template
+                value_template: "{{ (input('button_count') | int) >= 2 }}"
+        sequence:
+          - service: light.toggle
+            target: !input lights_button_2
+
+      - conditions:
+          - condition: and
+            conditions:
+              - condition: trigger
+                id: button_3
+              - condition: template
+                value_template: "{{ (input('button_count') | int) >= 3 }}"
+        sequence:
+          - service: light.toggle
+            target: !input lights_button_3
