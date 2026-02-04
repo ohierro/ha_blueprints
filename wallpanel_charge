@@ -1,0 +1,62 @@
+blueprint:
+  name: "Gestión de Carga Wallpanel (20-80)"
+  description: "Controla un interruptor inteligente para mantener la batería del Wallpanel entre dos umbrales."
+  domain: automation
+  input:
+    battery_sensor:
+      name: Sensor de Batería
+      description: Selecciona el sensor REST que creamos con la IP del Wallpanel.
+      selector:
+        entity:
+          domain: sensor
+          device_class: battery
+    charging_switch:
+      name: Interruptor de Carga
+      description: El enchufe o interruptor inteligente que alimenta el Wallpanel.
+      selector:
+        entity:
+          domain: switch
+    min_battery:
+      name: Umbral Mínimo
+      default: 20
+      selector:
+        number:
+          min: 5
+          max: 50
+          unit_of_measurement: "%"
+    max_battery:
+      name: Umbral Máximo
+      default: 80
+      selector:
+        number:
+          min: 60
+          max: 100
+          unit_of_measurement: "%"
+
+mode: restart
+
+trigger:
+  - platform: state
+    entity_id: !input battery_sensor
+
+action:
+  - choose:
+      # Si la batería baja del mínimo, encender cargador
+      - conditions:
+          - condition: numeric_state
+            entity_id: !input battery_sensor
+            below: !input min_battery
+        sequence:
+          - service: switch.turn_on
+            target:
+              entity_id: !input charging_switch
+      
+      # Si la batería sube del máximo, apagar cargador
+      - conditions:
+          - condition: numeric_state
+            entity_id: !input battery_sensor
+            above: !input max_battery
+        sequence:
+          - service: switch.turn_off
+            target:
+              entity_id: !input charging_switch
