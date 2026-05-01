@@ -1,0 +1,67 @@
+blueprint:
+  name: "Control Hidropónico Dinámico"
+  description: "Ciclos de riego para motores basados en un selector de modo (formato X/Y)"
+  domain: automation
+  input:
+    motor_switch:
+      name: Motor/Bomba
+      description: El interruptor que controla el motor.
+      selector:
+        entity:
+          domain: switch
+    selector_modo:
+      name: Selector de Modo
+      description: El input_select con las opciones (ej. 5/15, 5/25).
+      selector:
+        entity:
+          domain: input_select
+    tiempo_on_defecto:
+      name: Minutos ON (Fijo)
+      description: Minutos que el motor estará encendido en cada ciclo.
+      default: 5
+      selector:
+        number:
+          min: 1
+          max: 60
+          unit_of_measurement: minutes
+
+mode: restart # Reinicia el ciclo si cambias el modo en la ruleta
+
+variables:
+  # Pasamos los inputs a variables para usarlas en plantillas
+  selector_entidad: !input selector_modo
+  minutos_on: !input tiempo_on_defecto
+
+trigger:
+  - platform: state
+    entity_id: !input selector_modo
+  - platform: homeassistant
+    event: start # Para que arranque tras un reinicio de HA
+
+action:
+  - repeat:
+      while:
+        # El ciclo sigue mientras el modo no sea 'Off' o 'Parado'
+        - condition: template
+          value_template: "{{ states(selector_entidad) not in ['Off', 'Parado', 'off', 'OFF'] }}"
+      sequence:
+        - service: switch.turn_on
+          target:
+            entity_id: !input motor_switch
+        
+        - delay:
+            minutes: "{{ minutos_on }}"
+            
+        - service: switch.turn_off
+          target:
+            entity_id: !input motor_switch
+            
+        - delay:
+            minutes: >
+              {% set modo = states(selector_entidad) %}
+              {# Extraemos el número después de la barra / #}
+              {% if '/' in modo %}
+                {{ modo.split('/')[1] | int }}
+              {% else %}
+                15
+              {% endif %}
