@@ -1,0 +1,109 @@
+blueprint:
+  name: Switch (1 to 3 buttons) - MQTT control
+  description: >
+    Control for switchs that send 1_single, 2_single, and 3_single via MQTT.
+  domain: automation
+  input:
+    button_count:
+      name: Number of buttons
+      description: "Make sure to select '2' or '3' for those buttons to work."
+      default: "1"
+      selector:
+        select:
+          options:
+            - label: "1 button"
+              value: "1"
+            - label: "2 buttons"
+              value: "2"
+            - label: "3 buttons"
+              value: "3"
+    switch_device:
+      name: Switch
+      selector:
+        device:
+          integration: mqtt
+    
+    device_button_1:
+      name: Device button 1
+      selector:
+        target:
+          entity:
+            domain: 
+            - light
+            - switch
+            - fan
+    device_button_2:
+      name: Device button 2
+      default: {}
+      selector:
+        target:
+          entity:
+            domain: 
+            - light
+            - switch
+            - fan
+    device_button_3:
+      name: Device button 3
+      default: {}
+      selector:
+        target:
+          entity:
+            domain: 
+            - light
+            - switch
+            - fan
+
+mode: restart
+
+variables:
+  button_limit: !input button_count
+
+trigger:
+  - platform: device
+    domain: mqtt
+    device_id: !input switch_device
+    type: action
+    subtype: 1_single
+    id: "btn1"
+  - platform: device
+    domain: mqtt
+    device_id: !input switch_device
+    type: action
+    subtype: 2_single
+    id: "btn2"
+  - platform: device
+    domain: mqtt
+    device_id: !input switch_device
+    type: action
+    subtype: 3_single
+    id: "btn3"
+
+action:
+  - choose:
+      # Botón 1
+      - conditions:
+          - condition: trigger
+            id: "btn1"
+        sequence:
+          - action: homeassistant.toggle
+            target: !input device_button_1
+
+      # Botón 2 (Se activa si el trigger es btn2 Y el selector es >= 2)
+      - conditions:
+          - condition: trigger
+            id: "btn2"
+          - condition: template
+            value_template: "{{ button_limit | int >= 2 }}"
+        sequence:
+          - action: homeassistant.toggle
+            target: !input device_button_2
+
+      # Botón 3 (Se activa si el trigger es btn3 Y el selector es 3)
+      - conditions:
+          - condition: trigger
+            id: "btn3"
+          - condition: template
+            value_template: "{{ button_limit | int >= 3 }}"
+        sequence:
+          - action: homeassistant.toggle
+            target: !input device_button_3
